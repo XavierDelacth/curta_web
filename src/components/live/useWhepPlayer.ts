@@ -8,6 +8,7 @@ export function useWhepPlayer() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const locRef = useRef<string>('');
+  const remoteStreamRef = useRef<MediaStream | null>(null);
 
   const play = useCallback(async (
     liveId: string,
@@ -17,16 +18,29 @@ export function useWhepPlayer() {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pcRef.current = pc;
     locRef.current = '';
+    remoteStreamRef.current = null;
 
     /** Se passarem 5s sem track remoto → fallback HLS. */
     let gotTrack = false;
     pc.ontrack = (ev) => {
       gotTrack = true;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      if (ev.track.kind === 'video') {
-        video.srcObject = ev.streams[0] ?? null;
-        video.play().catch(() => {});
+
+      if (!remoteStreamRef.current) {
+        remoteStreamRef.current = new MediaStream();
+        video.srcObject = remoteStreamRef.current;
       }
+
+      const alreadyHasTrack = remoteStreamRef.current
+        .getTracks()
+        .some((t) => t.id === ev.track.id);
+      if (!alreadyHasTrack) {
+        remoteStreamRef.current.addTrack(ev.track);
+      }
+
+      video.play().catch(() => {
+        /* autoplay pode falhar antes de interação do utilizador */
+      });
     };
 
     pc.oniceconnectionstatechange = () => {
@@ -70,6 +84,7 @@ export function useWhepPlayer() {
       pcRef.current.close();
       pcRef.current = null;
     }
+    remoteStreamRef.current = null;
   }, []);
 
   const terminate = useCallback(async (liveId: string) => {

@@ -198,21 +198,7 @@ export default function HomePage() {
       {/* Carousel */}
       <FeaturedCarousel films={destaques} />
 
-      {/* Destaques */}
-      {destaques.length > 0 && (
-        <section>
-          <h2 className="text-xl font-bold mb-4">Destaques</h2>
-          <div className="flex flex-wrap justify-center gap-4">
-            {destaques.slice(0, 5).map((film) => (
-              <div key={film.id} className="w-full sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] xl:w-[calc(20%-13px)]">
-                <FilmCard film={film} isFavorite={favoritedIds.has(film.id)} onToggleFavorite={toggleFavorite} />
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Lives */}
+      {/* Lives — antes dos Destaques */}
       {lives.length > 0 && (
         <section>
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
@@ -235,6 +221,20 @@ export default function HomePage() {
                 <h3 className="font-semibold text-sm truncate">{live.titulo}</h3>
                 <p className="text-xs text-neutral-500 mt-1">{live.criador_nome}</p>
               </Link>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Destaques */}
+      {destaques.length > 0 && (
+        <section>
+          <h2 className="text-xl font-bold mb-4">Destaques</h2>
+          <div className="flex flex-wrap justify-center gap-4">
+            {destaques.slice(0, 5).map((film) => (
+              <div key={film.id} className="w-full sm:w-[calc(50%-8px)] lg:w-[calc(33.333%-11px)] xl:w-[calc(20%-13px)]">
+                <FilmCard film={film} isFavorite={favoritedIds.has(film.id)} onToggleFavorite={toggleFavorite} />
+              </div>
             ))}
           </div>
         </section>

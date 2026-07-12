@@ -30,9 +30,29 @@ export function useWhipBroadcaster() {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pcRef.current = pc;
 
-    stream.getTracks().forEach((track) => {
-      pc.addTrack(track, stream);
-    });
+    // Adicionar tracks — usar addTransceiver para vídeo para poder
+    // forçar H264 (único codec que o MediaMTX consegue remuxar para HLS)
+    const videoTrack = stream.getVideoTracks()[0];
+    const audioTrack = stream.getAudioTracks()[0];
+
+    if (videoTrack) {
+      const transceiver = pc.addTransceiver(videoTrack, {
+        direction: 'sendonly',
+        streams: [stream],
+      });
+      const caps = RTCRtpSender.getCapabilities('video');
+      if (caps) {
+        const h264 = caps.codecs.filter((c) => c.mimeType.toLowerCase() === 'video/h264');
+        if (h264.length > 0) {
+          transceiver.setCodecPreferences(h264);
+        } else {
+          console.warn('[WHIP] H264 não disponível — a publicar sem forçar codec');
+        }
+      }
+    }
+    if (audioTrack) {
+      pc.addTrack(audioTrack, stream);
+    }
 
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === 'failed' || pc.iceConnectionState === 'disconnected') {

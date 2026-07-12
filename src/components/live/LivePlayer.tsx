@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Volume2, VolumeX } from 'lucide-react';
 import Hls from 'hls.js';
 import { useWhepPlayer } from './useWhepPlayer';
 import { LiveDetail } from '@/types';
@@ -12,8 +13,16 @@ export default function LivePlayer({ live }: LivePlayerProps) {
   const hlsRef = useRef<Hls | null>(null);
   const whepRef = useRef<ReturnType<typeof useWhepPlayer>>();
   const [useHls, setUseHls] = useState(false);
+  const [muted, setMuted] = useState(true);
   const whep = useWhepPlayer();
   whepRef.current = whep;
+
+  const toggleMute = () => {
+    if (videoRef.current) {
+      videoRef.current.muted = !muted;
+      setMuted(!muted);
+    }
+  };
 
   /** 1. Tentar WHEP (lives whip/rtmp passam pelo MediaMTX). */
   useEffect(() => {
@@ -27,7 +36,6 @@ export default function LivePlayer({ live }: LivePlayerProps) {
     return () => {
       whep.cleanup();
     };
-    // Só corre uma vez: quando live.id ou a flag useHls muda para false
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [live.id]);
 
@@ -54,7 +62,7 @@ export default function LivePlayer({ live }: LivePlayerProps) {
   }, [useHls, live.hls_url]);
 
   return (
-    <div className="aspect-video bg-black rounded-xl overflow-hidden">
+    <div className="aspect-video bg-black rounded-xl overflow-hidden relative">
       <video
         ref={videoRef}
         className="w-full h-full object-contain"
@@ -62,6 +70,24 @@ export default function LivePlayer({ live }: LivePlayerProps) {
         playsInline
         muted
       />
+      {muted && (
+        <button
+          onClick={toggleMute}
+          className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/50 flex items-center justify-center hover:bg-black/70 transition-colors z-10"
+          title="Ativar som"
+        >
+          <VolumeX className="w-4 h-4 text-white" />
+        </button>
+      )}
+      {!muted && (
+        <button
+          onClick={toggleMute}
+          className="absolute bottom-3 right-3 w-9 h-9 rounded-full bg-black/40 flex items-center justify-center hover:bg-black/60 transition-colors z-10"
+          title="Silenciar"
+        >
+          <Volume2 className="w-4 h-4 text-white" />
+        </button>
+      )}
     </div>
   );
 }
