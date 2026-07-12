@@ -16,7 +16,7 @@ export default function CreateLivePage() {
     if (!titulo.trim()) return;
     setLoading(true);
     try {
-      const res = await liveService.iniciar({ titulo: titulo.trim(), descricao, source: 'rtmp' });
+      const res = await liveService.iniciar({ titulo: titulo.trim(), descricao, source: 'whip' });
       setResult(res);
     } catch {} finally { setLoading(false); }
   }, [titulo, descricao]);

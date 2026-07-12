@@ -1,14 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import Hls from 'hls.js';
-import { ArrowLeft, Radio, Users } from 'lucide-react';
+import { ArrowLeft, Users } from 'lucide-react';
 import { liveService } from '@/api/live-service';
 import { LiveDetail } from '@/types';
+import LivePlayer from '@/components/live/LivePlayer';
 
 export default function LivePlayerPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const videoRef = useRef<HTMLVideoElement>(null);
   const [live, setLive] = useState<LiveDetail | null>(null);
   const [viewers, setViewers] = useState(0);
 
@@ -16,19 +15,6 @@ export default function LivePlayerPage() {
     if (!id) return;
     liveService.obter(id).then(setLive).catch(() => navigate('/'));
   }, [id, navigate]);
-
-  useEffect(() => {
-    if (!live?.hls_url || !videoRef.current) return;
-    const video = videoRef.current;
-    if (Hls.isSupported()) {
-      const hls = new Hls({ lowLatencyMode: true });
-      hls.loadSource(live.hls_url);
-      hls.attachMedia(video);
-      hls.on(Hls.Events.MANIFEST_PARSED, () => video.play().catch(() => {}));
-    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      video.src = live.hls_url;
-    }
-  }, [live]);
 
   useEffect(() => {
     if (!id) return;
@@ -49,9 +35,7 @@ export default function LivePlayerPage() {
         <span className="flex items-center gap-1 text-sm text-neutral-500"><Users className="w-4 h-4" /> {viewers}</span>
       </div>
 
-      <div className="aspect-video bg-black rounded-xl overflow-hidden">
-        <video ref={videoRef} className="w-full h-full object-contain" autoPlay playsInline />
-      </div>
+      {live && <LivePlayer live={live} />}
 
       {live && (
         <div className="mt-4">

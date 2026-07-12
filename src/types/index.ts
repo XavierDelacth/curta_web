@@ -226,6 +226,9 @@ export interface LiveOut {
   criador_nome: string;
   titulo: string;
   descricao: string;
+  status: string;
+  source: string;
+  rtmp_url: string;
   hls_url: string;
   iniciado_em: string;
 }
@@ -246,7 +249,6 @@ export interface LiveIniciarResponse {
 }
 
 export interface LiveDetail extends LiveOut {
-  status?: string;
   terminado_em?: string | null;
 }
 
