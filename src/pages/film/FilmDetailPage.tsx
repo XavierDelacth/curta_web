@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, Play, Eye, Calendar, ThumbsUp, ThumbsDown, Heart, Download, Send, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
+import { ArrowLeft, Play, Eye, Calendar, ThumbsUp, ThumbsDown, Heart, Download, MoreVertical, Send, Trash2, ChevronDown, ChevronUp } from 'lucide-react';
 import { catalogService } from '@/api/catalog-service';
 import { interactionService } from '@/api/interaction-service';
 import { downloadService } from '@/api/download-service';
@@ -42,6 +42,8 @@ export default function FilmDetailPage() {
   const [showFullDesc, setShowFullDesc] = useState(false);
   const [categorias, setCategorias] = useState<Record<string, string>>({});
   const [dlProgress, setDlProgress] = useState<number | null>(null);
+  const isAuthor = user?.id === film?.autor_id;
+  const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
     if (!id) return;
@@ -148,6 +150,28 @@ export default function FilmDetailPage() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <h1 className="text-lg font-semibold truncate flex-1">Detalhe</h1>
+        {isAuthor && (
+          <div className="relative">
+            <button onClick={() => setShowMenu((v) => !v)} className="p-1 hover:bg-neutral-100 dark:hover:bg-neutral-800 rounded-lg">
+              <MoreVertical className="w-5 h-5" />
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-10" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-full mt-1 z-20 bg-white dark:bg-neutral-800 border border-neutral-200 dark:border-neutral-700 rounded-xl shadow-lg py-1 min-w-[140px]">
+                  <button onClick={() => { setShowMenu(false); navigate(`/filme/${film.id}/editar`); }}
+                    className="w-full text-left px-4 py-2 text-sm hover:bg-neutral-100 dark:hover:bg-neutral-700">
+                    Editar
+                  </button>
+                  <button onClick={() => { setShowMenu(false); navigate(`/filme/${film.id}/editar`); }}
+                    className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-neutral-100 dark:hover:bg-neutral-700">
+                    Eliminar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Thumbnail */}

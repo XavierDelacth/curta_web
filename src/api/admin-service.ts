@@ -59,7 +59,7 @@ export const adminService = {
     api.put<PermissaoOut[]>(`/admin/papeis/${roleId}/permissoes`, { permission_ids }).then((r) => r.data),
 
   getSolicitacoes: (estado?: string) => {
-    const qs = estado && estado !== 'todos' ? `?estado=${estado}` : '';
+    const qs = estado && estado !== 'todos' ? `?estado=${estado}` : '?estado=todos';
     return api.get(`/admin/solicitacoes${qs}`).then((r) => r.data);
   },
 

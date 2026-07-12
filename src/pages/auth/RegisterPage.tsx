@@ -134,14 +134,14 @@ export default function RegisterPage() {
               {errors.confirm && <p className="text-xs text-red-500 mt-1">{errors.confirm}</p>}
             </div>
 
-            <label className="flex items-center gap-3 cursor-pointer">
+            <button type="button" onClick={() => setAccepted((v) => !v)} className="flex items-center gap-3 cursor-pointer w-full text-left">
               <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${accepted ? 'bg-brand-red border-brand-red' : 'border-neutral-300 dark:border-neutral-600'}`}>
                 {accepted && <Check className="w-3 h-3 text-white" />}
               </div>
               <span className="text-sm text-neutral-500">
                 Aceito os <span className="text-brand-red font-semibold">Termos de Uso</span>
               </span>
-            </label>
+            </button>
 
             {formError && (
               <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-600">
