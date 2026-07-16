@@ -40,6 +40,10 @@ export const liveService = {
       },
       body: sdp,
     });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => '');
+      throw new Error(`WHEP falhou (${resp.status}): ${body.slice(0, 200)}`);
+    }
     const answer = await resp.text();
     const location = resp.headers.get('Location') ?? '';
     return { sdp: answer, location };

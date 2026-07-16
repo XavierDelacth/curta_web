@@ -25,7 +25,14 @@ export default function LiveStreamPage() {
       streamRef.current = stream;
       if (videoRef.current) { videoRef.current.srcObject = stream; videoRef.current.play(); }
       setCameraOn(true);
-    } catch {}
+    } catch (err) {
+      const msg = err instanceof DOMException && err.name === 'NotAllowedError'
+        ? 'Permissão de câmara/microfone negada'
+        : err instanceof DOMException && err.name === 'NotFoundError'
+          ? 'Nenhuma câmara/microfone encontrado'
+          : 'Erro ao aceder câmara/microfone';
+      alert(msg);
+    }
   }, []);
 
   const stopCamera = useCallback(() => {

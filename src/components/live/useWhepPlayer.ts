@@ -2,13 +2,20 @@ import { useCallback, useRef } from 'react';
 import { liveService } from '@/api/live-service';
 
 const WHEP_TIMEOUT_MS = 5000;
-const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }];
+const TURN_URL = import.meta.env.VITE_TURN_URL ?? 'turn:openrelay.metered.ca:80';
+const TURN_USERNAME = import.meta.env.VITE_TURN_USERNAME ?? 'openrelayproject';
+const TURN_CREDENTIAL = import.meta.env.VITE_TURN_CREDENTIAL ?? 'openrelayproject';
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: TURN_URL, username: TURN_USERNAME, credential: TURN_CREDENTIAL },
+];
 
 export function useWhepPlayer() {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
   const locRef = useRef<string>('');
   const remoteStreamRef = useRef<MediaStream | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
 
   const play = useCallback(async (
     liveId: string,
@@ -17,6 +24,7 @@ export function useWhepPlayer() {
   ) => {
     const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
     pcRef.current = pc;
+    videoRef.current = video;
     locRef.current = '';
     remoteStreamRef.current = null;
 
@@ -83,6 +91,10 @@ export function useWhepPlayer() {
     if (pcRef.current) {
       pcRef.current.close();
       pcRef.current = null;
+    }
+    if (videoRef.current) {
+      videoRef.current.srcObject = null;
+      videoRef.current = null;
     }
     remoteStreamRef.current = null;
   }, []);
