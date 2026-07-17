@@ -9,6 +9,9 @@ interface LivePlayerProps {
   onEnded?: () => void;
 }
 
+/** Tentativas WHEP falhadas antes de desistir de vez (com backoff exponencial até 15s). */
+const WHEP_MAX_RETRIES = 8;
+
 export default function LivePlayer({ live, onEnded }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
@@ -16,6 +19,11 @@ export default function LivePlayer({ live, onEnded }: LivePlayerProps) {
   const retryCountRef = useRef(0);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const connectionStateRef = useRef<'connected' | 'reconnecting' | 'failed'>('connected');
+  /** WHEP já funcionou nesta live? Distingue "não suportado" de "ligação caiu". */
+  const whepEverConnectedRef = useRef(false);
+  const whepRetriesRef = useRef(0);
+  const whepRetryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [whepAttempt, setWhepAttempt] = useState(0);
   const [useHls, setUseHls] = useState(false);
   const [muted, setMuted] = useState(true);
   const [connectionState, setConnectionState] = useState<'connected' | 'reconnecting' | 'failed'>('connected');
@@ -29,13 +37,32 @@ export default function LivePlayer({ live, onEnded }: LivePlayerProps) {
     }
   };
 
-  const handleManualRetry = useCallback(() => {
+  /** Retoma a ligação pelo caminho ativo (HLS ou WHEP), reiniciando o backoff. */
+  const restartConnection = useCallback(() => {
     retryCountRef.current = 0;
+    whepRetriesRef.current = 0;
     if (retryTimeoutRef.current) { clearTimeout(retryTimeoutRef.current); retryTimeoutRef.current = null; }
+    if (whepRetryTimeoutRef.current) { clearTimeout(whepRetryTimeoutRef.current); whepRetryTimeoutRef.current = null; }
     connectionStateRef.current = 'reconnecting';
     setConnectionState('reconnecting');
-    if (hlsRef.current) hlsRef.current.startLoad();
+    if (hlsRef.current) {
+      hlsRef.current.startLoad();
+    } else {
+      setWhepAttempt((a) => a + 1);
+    }
   }, []);
+
+  const handleManualRetry = restartConnection;
+
+  /** A rede voltou: não esperar pelo backoff, tentar já (vale para WHEP e HLS). */
+  useEffect(() => {
+    const handleOnline = () => {
+      if (connectionStateRef.current === 'connected') return;
+      restartConnection();
+    };
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
+  }, [restartConnection]);
 
   const initHls = useCallback((video: HTMLVideoElement, url: string) => {
     if (hlsRef.current) {
@@ -86,20 +113,68 @@ export default function LivePlayer({ live, onEnded }: LivePlayerProps) {
     });
   }, [onEnded]);
 
+  /** Recomeçar do zero sempre que muda a live. */
+  useEffect(() => {
+    whepEverConnectedRef.current = false;
+    whepRetriesRef.current = 0;
+    retryCountRef.current = 0;
+    connectionStateRef.current = 'connected';
+    setConnectionState('connected');
+    setUseHls(false);
+    setWhepAttempt(0);
+  }, [live.id]);
+
   /** 1. Tentar WHEP (lives whip/rtmp passam pelo MediaMTX). */
   useEffect(() => {
     if (!videoRef.current || useHls) return;
     const video = videoRef.current;
 
-    whep.play(live.id, video, () => {
-      setUseHls(true);
+    whep.play(live.id, video, {
+      onConnected: () => {
+        whepEverConnectedRef.current = true;
+        whepRetriesRef.current = 0;
+        connectionStateRef.current = 'connected';
+        setConnectionState('connected');
+      },
+      onFailure: () => {
+        /* Nunca chegou a ligar → esta live não serve WHEP (ex.: source=browser): vai de HLS. */
+        if (!whepEverConnectedRef.current) {
+          setUseHls(true);
+          return;
+        }
+
+        /* Já esteve a dar e caiu → reconectar WHEP com backoff. */
+        whepRetriesRef.current += 1;
+        if (whepRetriesRef.current > WHEP_MAX_RETRIES) {
+          if (live.hls_url) {
+            setUseHls(true);
+          } else {
+            connectionStateRef.current = 'failed';
+            setConnectionState('failed');
+          }
+          return;
+        }
+
+        connectionStateRef.current = 'reconnecting';
+        setConnectionState('reconnecting');
+        const delay = Math.min(1000 * 2 ** (whepRetriesRef.current - 1), 15000);
+        if (whepRetryTimeoutRef.current) clearTimeout(whepRetryTimeoutRef.current);
+        whepRetryTimeoutRef.current = setTimeout(() => {
+          whepRetryTimeoutRef.current = null;
+          setWhepAttempt((a) => a + 1);
+        }, delay);
+      },
     });
 
     return () => {
+      if (whepRetryTimeoutRef.current) {
+        clearTimeout(whepRetryTimeoutRef.current);
+        whepRetryTimeoutRef.current = null;
+      }
       whep.cleanup();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [live.id]);
+  }, [live.id, useHls, whepAttempt, live.hls_url]);
 
   /** 2. Fallback HLS (para source=browser, ou após timeout WHEP). */
   useEffect(() => {
@@ -112,18 +187,8 @@ export default function LivePlayer({ live, onEnded }: LivePlayerProps) {
       video.src = live.hls_url;
     }
 
-    const handleOnline = () => {
-      if (retryTimeoutRef.current) { clearTimeout(retryTimeoutRef.current); retryTimeoutRef.current = null; }
-      retryCountRef.current = 0;
-      connectionStateRef.current = 'reconnecting';
-      setConnectionState('reconnecting');
-      if (hlsRef.current) hlsRef.current.startLoad();
-    };
-    window.addEventListener('online', handleOnline);
-
     return () => {
       if (retryTimeoutRef.current) { clearTimeout(retryTimeoutRef.current); retryTimeoutRef.current = null; }
-      window.removeEventListener('online', handleOnline);
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
